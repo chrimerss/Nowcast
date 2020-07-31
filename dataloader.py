@@ -50,11 +50,20 @@ from nvidia.dali.pipeline import Pipeline
 import torchvision.transforms as transforms
 from nvidia.dali.plugin.pytorch import DALIClassificationIterator, DALIGenericIterator
 
+def normalizer(x):
+	'''input tensor size (b,tsize,c,m,n), Apply log transform to data
+		See Casper et al. 2020 MetNet
+	'''
+	log_transform= np.log10(x+0.01)/4
+	tangent_transform= np.tanh(log_transform)
+
+	return tangent_transform 
+
 class HybridTrainPipe(Pipeline):
-    def __init__(self, batch_size, num_threads, device_id, dali_cpu=False, local_rank=0,
+    def __init__(self, event, batch_size, num_threads, device_id, dali_cpu=False, local_rank=0,
                  cutout=0):
         super(HybridTrainPipe, self).__init__(batch_size, num_threads, device_id, seed=12 + device_id)
-        self.iterator = iter(DATA_INPUT_ITER(batch_size, 'train'))
+        self.iterator = iter(DATA_INPUT_ITER(event, batch_size))
         dali_device = "gpu"
         self.input = ops.ExternalSource()
         self.input_target = ops.ExternalSource()
@@ -73,49 +82,47 @@ class HybridTrainPipe(Pipeline):
 
 class DATA_INPUT_ITER(object):
     
-    def __init__(self, batch_size, type='train'):
+    def __init__(self,event, batch_size ):
+        self.event=event
         self.batch_size = batch_size
-        self.train = (type == 'train')
-        if self.train:
-            self.data= h5py.File('training.h5','r')
-        else:
-            self.data= h5py.File('testing.h5','r')
-        self.keys= list(self.data.keys())
+        self.base_dir= 'data'
+        h5= h5py.File(os.path.join(self.base_dir, self.event+ '.h5'),'r')
+        self.target_keys= [key for key in list(h5.keys()) if 'test' in key]
+        self.input_keys= [key for key in list(h5.keys()) if 'train' in key]
+        # self.keys= list(h5.keys())
+        h5.close()
         
     def __iter__(self):
         self.i = 0
-        self.n = len(self.keys)
+        self.n = len(self.input_keys)
         return self
 
     def __next__(self):
+        h5= h5py.File(os.path.join(self.base_dir, self.event+'.h5'), 'r')
+        
         batch = []
         targets = []
         for _ in range(self.batch_size):
-            inputs, target = self.data[self.keys[self.i]][:5,:,:], self.data[self.keys[self.i]][-1,:,:][np.newaxis,:,:]
-            inputs[inputs<0]=-1
-            target[target<0]=-1
-            inputs[np.isnan(inputs)]= -1
-            target[np.isnan(target)]= -1
-            factor= np.nanmean(target[target>0])/np.nanmean(inputs)
-            inputs= inputs*factor
-            inputs[np.isnan(inputs)]= -1
+
+            inputs= np.array(h5[self.input_keys[self.i]])[:,np.newaxis,:,:].astype(np.float32)
+            target= np.array(h5[self.target_keys[self.i]])[:,np.newaxis,:,:].astype(np.float32)
             batch.append(inputs)
             targets.append(target)
             self.i = (self.i + 1) % self.n
-
+        h5.close()
         return (batch, targets)
 
     next = __next__
 
-def get_iter_dali(type, batch_size, num_threads, local_rank=0,  val_size=32, cutout=0):
-    if type == 'train':
-        pip_train = HybridTrainPipe(batch_size=batch_size, num_threads=num_threads, device_id=local_rank,
-                                           local_rank=local_rank, cutout=cutout)
-        pip_train.build()
-        dali_iter_train = DALIGenericIterator(pip_train, ['inputs', 'target'], size=124160 )
+def get_iter_dali(event, batch_size, num_threads, local_rank=0, cutout=0):
+    pip_train = HybridTrainPipe(event,batch_size=batch_size, num_threads=num_threads, device_id=local_rank,
+                                        local_rank=local_rank, cutout=cutout)
+    pip_train.build()
+    dali_iter_train = DALIGenericIterator(pip_train, ['inputs', 'target'])
         # dali_iter_train= pip_train.run()
         
-        return dali_iter_train
+    return dali_iter_train
 
 if __name__=='__main__':
-	prepare_data([100,300])
+	# prepare_data([100,300])
+    print(get_iter_dali('20170604',2,8))

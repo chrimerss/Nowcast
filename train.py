@@ -8,6 +8,8 @@ from tensorboardX import SummaryWriter
 from torch.autograd import Variable
 import os
 from loss import ComLoss
+from dataloader import get_iter_dali
+import time
 
 
 use_gpu=True
@@ -41,7 +43,7 @@ def main():
 	batch_size=2
 	lr= 1e-3
 	logging_path= 'logging/'
-	num_epoches= 500
+	num_epoches= 100
 	epoch_to_save= 10
 
 
@@ -68,24 +70,34 @@ def main():
 	#start training
 	step= 0
 	for epoch in range(num_epoches):
+		start= time.time()
 		scheduler.step(epoch)
 
 		for param_group in optimizer.param_groups:
 			print('learning rate %f' %param_group['lr'])
 
-		for e, event in enumerate(EVENTS):
-			print('loading data sets ...')
-			dataset_train= DataSet(event=EVENTS[0])
-			loader_train= DataLoader(dataset= dataset_train, num_workers=8, batch_size=batch_size, shuffle=True)
+		for e, event in enumerate([EVENTS[0]]):
+			dataset_train= DataSet(event=event)
+			# loader_train= DataLoader(dataset= dataset_train, num_workers=8, batch_size=batch_size, shuffle=True)
+			loader_train = get_iter_dali(event=EVENTS[0], batch_size=2,
+                                        num_threads=8)
 
-			for i, (input_train, target_train) in enumerate(loader_train, 0):
+			for i, data in enumerate(loader_train):
 				# input size: (4,10,1,200,200)
 				# target size: (4,10,1,200,200)
+				# ====================normal===============#
+				# input_train=data[0]
+				# target_train=data[1]
+				# ====================DALI===============#
+				data= data[0]
+				input_train=data['inputs']
+				target_train=data['target']
 				model.train()
 				model.zero_grad()
 				optimizer.zero_grad()
 
 				input_train= normalizer(input_train)
+				# target_train= normalizer(target_train)
 				input_train, target_train= Variable(input_train), Variable(target_train)
 				if use_gpu:
 					input_train, target_train= input_train.cuda(), target_train.cuda()
@@ -100,8 +112,8 @@ def main():
 				model.eval()
 				out_train= model(input_train)
 				# output_train= torch.clamp(out_train, 0, 1)
-				print("[epoch %d/%d][event %d/%d][step %d/%d]  obj: %.4f "%(epoch+1,num_epoches,e, len(EVENTS), i+1,len(loader_train),-loss.item()))
-
+				# print("[epoch %d/%d][event %d/%d][step %d/%d]  obj: %.4f "%(epoch+1,num_epoches,e, len(EVENTS), i+1,len(loader_train),-loss.item()))
+				print("[epoch %d/%d][event %d/%d][step %d]  obj: %.4f "%(epoch+1,num_epoches,e, len(EVENTS), i+1,-loss.item()))
 				if step% 10 ==0:
 					writer.add_scalar('loss', loss.item())
 
@@ -110,6 +122,8 @@ def main():
 		#save model
 		if epoch % epoch_to_save==0:
 			torch.save(model.state_dict(), os.path.join(logging_path,'net_epoch%d.pth'%(epoch+1)))
+		end= time.time()
+		print('One epoch costs %.2f minutes!'%((end-start)/60.))
 
 	torch.save(model.state_dict(), os.path.join(logging_path,'newest.pth'))
 
