@@ -5,14 +5,14 @@ import torch.nn.functional as F
 class UNet(nn.Module):
     def __init__(self, ):
         super(UNet, self).__init__()
-        self.inc= DoubleConv(5,64) 
+        self.inc= DoubleConv(10,64) 
         self.down1= DownSample(64,128)
         self.down2= DownSample(128,128)
         self.down3= DownSample(128,128)
         self.up1= UpSample(256, 128)
         self.up2= UpSample(256, 64)
         self.up3= UpSample(128, 16)
-        self.outConv= OutConv(16,1)
+        self.outConv= OutConv(16,10)
         
     def forward(self, x):
         x1= self.inc(x) #(bsize,64,50,50)

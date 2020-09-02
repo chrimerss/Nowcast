@@ -1,2 +1,6 @@
 data/*
 *.h5
+*.gif
+weights/*
+logging/*
+rainnet/*

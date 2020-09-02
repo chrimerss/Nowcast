@@ -70,11 +70,11 @@ class ComLoss(torch.nn.Module):
 		ssim=0
 		(_,tsize, channel, _, _) = img1.size() 
 		for it in range(tsize):
-			_img1= img1[:,it,:,:,:].detach()
-			_img2= img2[:,it,:,:,:].detach()
+			_img1= img1[:,it,:,:,:]
+			_img2= img2[:,it,:,:,:]
 			window= self.window.cuda()
 			window = self.window.type_as(_img1)
-			ssim+=_ssim(_img1, _img2, window, self.window_size, channel, self.size_average)
+			ssim= ssim+(_ssim(_img1, _img2, window, self.window_size, channel, self.size_average))
 
 		return ssim
 

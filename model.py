@@ -6,6 +6,22 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
+class DoubleConv(nn.Module):
+    def __init__(self, in_channels,hidden_channels, out_channels):
+        super(DoubleConv, self).__init__()
+        self.doubleConv= nn.Sequential(
+                        nn.Conv2d(in_channels, hidden_channels, 3,1,1),
+                        nn.BatchNorm2d(hidden_channels),
+                        nn.LeakyReLU(True),
+                        nn.Conv2d(hidden_channels, out_channels, 3,1,1),
+                        nn.BatchNorm2d(out_channels),
+                        nn.LeakyReLU(True),
+                )
+    def forward(self, x):
+        out= self.doubleConv(x)
+        
+        return out
+
 class BaseNet(nn.Module):
 
 	def __init__(self, input_channels, hidden_channels, kernel_size, bias=True, use_gpu=False):
@@ -116,19 +132,38 @@ class Nowcast(nn.Module):
 
 				super(Nowcast, self).__init__()
 
-				self.radarnet= RadarNet(input_channels=1, hidden_channels=16, kernel_size=3,
+				self.radarnet= RadarNet(input_channels=input_channels, hidden_channels=hidden_channels, kernel_size=3,
 				bias=True, use_gpu=True)
 
-				self.upsample= nn.Upsample(scale_factor=(1,2,2), mode='trilinear', align_corners=True)
-				self.downsample= nn.MaxPool3d(kernel_size=(1,2,2))
+				self.upsample= nn.Sequential(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True), DoubleConv(input_channels, 8, 1))
+				self.downsample= nn.Sequential(nn.MaxPool2d(2),DoubleConv(input_channels, 8,1))
 
-				self.pipeline= nn.Sequential(
-						self.downsample,
-						self.radarnet,
-						self.upsample
+				# self.pipeline= nn.Sequential(
+				# 		# nn.BatchNorm2d(16),
+				# 		self.downsample,
+				# 		self.radarnet,
+				# 		# nn.BatchNorm2d(16),
+				# 		nn.LeakyReLU(),
+				# 		self.upsample
 						
-				)
+				# )
 
 	def forward(self,x):
+
+		bsize, tsize, channels, height, width= x.size()
+		y= torch.zeros((bsize,tsize,channels,height//4,width//4)).cuda()
+		for it in range(tsize):
+			y[:,it,:,:,:]= self.downsample(self.downsample(x[:,it,:,:,:]))
+
+		# x=self.downsample(x)
+		y=self.radarnet(y)
+		# print(y.size())
+
+		for it in range(tsize):
+			x[:,it,:,:,:]= self.upsample(self.upsample(y[:,it,:,:,:]))
+		# print(x)
+		# x=self.upsample(x)
+		# print(x)
+
 		
-		return self.pipeline(x)
+		return x

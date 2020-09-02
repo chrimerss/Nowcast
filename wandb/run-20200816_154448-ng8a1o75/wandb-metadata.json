@@ -1,0 +1,28 @@
+{
+    "root": "/home/allen/Documents/Projects/Nowcast",
+    "program": "<python with no main file>",
+    "git": {
+        "remote": "https://github.com/chrimerss/Nowcast.git",
+        "commit": "3935d89d83d6aa9ba452ae4812dd0dabde49f2d0"
+    },
+    "email": "chrimerss@gmail.com",
+    "startedAt": "2020-08-16T20:44:57.006259",
+    "host": "allen",
+    "username": "allen",
+    "executable": "/home/allen/Documents/Programs/miniconda3/envs/dl/bin/python3.7",
+    "os": "Linux-5.4.0-40-generic-x86_64-with-debian-bullseye-sid",
+    "python": "3.7.8",
+    "gpu": "GeForce GTX 1070",
+    "gpu_count": 1,
+    "cpu_count": 8,
+    "args": [
+        "-f",
+        "/home/allen/.local/share/jupyter/runtime/kernel-99373df9-4d6e-4831-be02-9cbd183f1772.json"
+    ],
+    "state": "running",
+    "jobType": null,
+    "mode": "run",
+    "name": "chocolate-lion-46",
+    "project": "Nowcast",
+    "heartbeatAt": "2020-08-16T20:45:21.955445"
+}
