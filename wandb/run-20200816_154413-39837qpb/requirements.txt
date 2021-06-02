@@ -128,7 +128,7 @@ torch==1.5.1
 torchvision==0.6.0a0+35d732a
 tornado==6.0.4
 traitlets==4.3.3
-urllib3==1.25.10
+urllib3==1.26.5
 wandb==0.9.4
 watchdog==0.10.3
 wcwidth==0.2.5
