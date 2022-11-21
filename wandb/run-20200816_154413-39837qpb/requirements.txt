@@ -119,7 +119,7 @@ tensorboard-plugin-wit==1.7.0
 tensorboard==2.3.0
 tensorboardx==2.1
 tensorflow-estimator==2.3.0
-tensorflow==2.3.0
+tensorflow==2.9.3
 termcolor==1.1.0
 terminado==0.8.3
 testpath==0.4.4
