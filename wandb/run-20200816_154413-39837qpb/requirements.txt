@@ -108,7 +108,7 @@ scikit-learn==0.23.1
 scipy==1.4.1
 send2trash==1.5.0
 sentry-sdk==0.16.3
-setuptools==49.2.0.post20200712
+setuptools==65.5.1
 shortuuid==1.0.1
 six==1.15.0
 sklearn==0.0
